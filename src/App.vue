@@ -5,17 +5,17 @@ import { useRoute } from 'vue-router'
 import zhCN from 'ant-design-vue/es/locale/zh_CN'
 import dayjs from 'dayjs'
 import 'dayjs/locale/zh-cn'
-import AppLayout from '@/components/AppLayout.vue'
+import AppLayout from '@/components/AppLayout/AppLayout.vue'
 
 dayjs.locale('zh-cn')
 
 const route = useRoute()
-const isLoginPage = computed(() => route.path === '/login')
+const isStandalonePage = computed(() => route.path === '/login' || route.path === '/bigData')
 </script>
 
 <template>
   <a-config-provider :locale="zhCN">
-    <RouterView v-if="isLoginPage" />
+    <RouterView v-if="isStandalonePage" />
     <AppLayout v-else>
       <RouterView />
     </AppLayout>

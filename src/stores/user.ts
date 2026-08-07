@@ -29,7 +29,7 @@ function getPayload(response: unknown) {
 }
 
 export const useUserStore = defineStore('user', () => {
-  const userInfo = ref<Record<string, unknown> | null>(readUserInfo())
+  const userInfo = ref<any>(readUserInfo())
   const displayName = computed(() => {
     const user = userInfo.value
 
@@ -37,11 +37,11 @@ export const useUserStore = defineStore('user', () => {
       return 'User'
     }
 
-    return String(user.Name || user.name || user.Account || user.account || 'User')
+    return user
   })
 
-  function setUserInfo(user: unknown) {
-    userInfo.value = user && typeof user === 'object' ? (user as Record<string, unknown>) : null
+  function setUserInfo(user: any) {
+    userInfo.value = user
 
     if (userInfo.value) {
       localStorage.setItem(USER_INFO_KEY, JSON.stringify(userInfo.value))
@@ -52,7 +52,7 @@ export const useUserStore = defineStore('user', () => {
 
   async function fetchUserInfo() {
     const response = await getLoginUser()
-    const user = getPayload(response)
+    const user = getPayload(response) as any
     setUserInfo(user)
     return user
   }

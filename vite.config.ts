@@ -9,7 +9,7 @@ import vueDevTools from 'vite-plugin-vue-devtools'
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd())
   const apiPrefix = env.VITE_API_PREFIX || '/api'
-  const proxyTarget = env.VITE_PROXY_TARGET || 'http://localhost:8055/'
+  const proxyTarget = env.VITE_PROXY_TARGET || 'http://localhost:5281/'
 
   return {
     plugins: [vue(), vueJsx(), vueDevTools()],

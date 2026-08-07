@@ -4,5 +4,5 @@ export interface LoginPayload {
 }
 
 export function login(data: LoginPayload): Promise<unknown>
-export function getLoginUser(): Promise<unknown>
+export function getLoginUser(params?: Record<string, unknown>): Promise<any>
 export function logout(): Promise<unknown>

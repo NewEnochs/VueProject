@@ -15,3 +15,11 @@ export function studentPage(data) {
     data,
   })
 }
+
+export function updatePassWord(data) {
+  return request({
+    url: '/student/updatePassWord',
+    method: 'post',
+    data,
+  })
+}

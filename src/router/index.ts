@@ -9,6 +9,9 @@ const titleMap: Record<string, string> = {
   '/login': '登录',
   '/student': '学生信息',
   '/personnel': '人员信息',
+  '/menu': '菜单管理',
+  '/dataView': '数据概览',
+  '/bigData': '大数据看板',
   '/test/test': '测试页面',
   '/user/userInfo': '用户信息',
   '/user/userList': '用户列表',
@@ -23,6 +26,18 @@ function generateRoutes(): RouteRecordRaw[] {
 
     if (routePath === '/login/login') {
       routePath = '/login'
+    }
+
+    if (routePath === '/home/menu') {
+      routePath = '/menu'
+    }
+
+    if (routePath === '/home/dataView') {
+      routePath = '/dataView'
+    }
+
+    if (routePath === '/home/bigData') {
+      routePath = '/bigData'
     }
 
     return {

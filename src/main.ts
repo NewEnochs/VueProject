@@ -7,6 +7,7 @@ import router from './router'
 
 // Ant Design Vue
 import Antd from 'ant-design-vue'
+import { message } from 'ant-design-vue'
 import 'ant-design-vue/dist/reset.css'
 
 // Element Plus
@@ -31,5 +32,8 @@ app.use(ElementPlus)
 
 // 全局挂载 ECharts
 app.config.globalProperties.$echarts = echarts
+
+// 全局挂载 Message，支持 this.$message.success / this.$message.error 等调用
+app.config.globalProperties.$message = message
 
 app.mount('#app')

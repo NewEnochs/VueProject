@@ -5,3 +5,15 @@ declare module '*.vue' {
   const component: DefineComponent<{}, {}, any>
   export default component
 }
+
+import type { MessageApi } from 'ant-design-vue/es/message'
+import type * as echarts from 'echarts'
+
+declare module 'vue' {
+  interface ComponentCustomProperties {
+    $echarts: typeof echarts
+    $message: MessageApi
+  }
+}
+
+export {}

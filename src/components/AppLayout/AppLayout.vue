@@ -2,14 +2,19 @@
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
+  BarChartOutlined,
   ClearOutlined,
   CloseOutlined,
   DashboardOutlined,
+  DownOutlined,
   ExperimentOutlined,
   FileSearchOutlined,
   FolderOpenOutlined,
+  FundProjectionScreenOutlined,
   HomeOutlined,
+  KeyOutlined,
   LogoutOutlined,
+  MenuOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
   TeamOutlined,
@@ -17,6 +22,7 @@ import {
 } from '@ant-design/icons-vue'
 import { logout } from '@/api/user'
 import { useUserStore } from '@/stores/user'
+import ChangePasswordModal from '../ChangePasswordModal/ChangePasswordModal.vue'
 import type { AppTab, MenuGroup, MenuLeaf, TabContextMenu } from './app-layout'
 
 const route = useRoute()
@@ -24,7 +30,9 @@ const router = useRouter()
 const userStore = useUserStore()
 const collapsed = ref(false)
 const leaving = ref(false)
-const tabs = ref<AppTab[]>([])
+const changePasswordRef = ref()
+const HOME_TAB: AppTab = { path: '/home', title: '首页' }
+const tabs = ref<AppTab[]>([HOME_TAB])
 const openKeys = ref<string[]>([])
 const tabMenu = ref<TabContextMenu>({
   visible: false,
@@ -53,7 +61,12 @@ const menus: MenuGroup[] = [
     key: 'tools',
     title: '系统工具',
     icon: ToolOutlined,
-    children: [{ path: '/test/test', title: '测试页面', icon: ExperimentOutlined }],
+    children: [
+      { path: '/menu', title: '菜单管理', icon: MenuOutlined },
+      { path: '/dataView', title: '数据概览', icon: BarChartOutlined },
+      { path: '/bigData', title: '大数据看板', icon: FundProjectionScreenOutlined },
+      { path: '/test/test', title: '测试页面', icon: ExperimentOutlined },
+    ],
   },
 ]
 
@@ -73,6 +86,11 @@ function getRouteTitle(path: string) {
 }
 
 function addTab(path: string) {
+  // 首页固定在第一个标签，无需重复添加
+  if (path === HOME_TAB.path) {
+    return
+  }
+
   const menu = findMenu(path)
   if (!menu) {
     return
@@ -88,6 +106,11 @@ function addTab(path: string) {
 
 function goPage(path: string) {
   hideTabMenu()
+  // 大数据看板：直接新窗口打开，不进入标签页
+  if (path === '/bigData') {
+    window.open('/bigData', '_blank')
+    return
+  }
   router.push(path)
 }
 
@@ -96,6 +119,12 @@ function handleMenuClick(event: { key: string | number }) {
 }
 
 function closeTab(path: string) {
+  // 首页标签不允许关闭
+  if (path === HOME_TAB.path) {
+    hideTabMenu()
+    return
+  }
+
   if (tabs.value.length <= 1) {
     hideTabMenu()
     return
@@ -112,11 +141,12 @@ function closeTab(path: string) {
 
 function closeLeftTabs(path: string) {
   const index = tabs.value.findIndex((item) => item.path === path)
-  if (index <= 0) {
+  if (index <= 1) {
     return
   }
 
-  tabs.value = tabs.value.slice(index)
+  // 关闭左侧时保留首页在第一个位置
+  tabs.value = [HOME_TAB, ...tabs.value.slice(index)]
   if (!tabs.value.some((item) => item.path === route.path)) {
     router.push(path)
   }
@@ -135,6 +165,11 @@ function closeRightTabs(path: string) {
 }
 
 function showTabMenu(event: MouseEvent, path: string) {
+  // 首页标签不显示右键菜单（不可关闭）
+  if (path === HOME_TAB.path) {
+    return
+  }
+
   event.preventDefault()
   tabMenu.value = {
     visible: true,
@@ -175,6 +210,24 @@ async function handleLogout(clearAll = false) {
     tabs.value = []
     leaving.value = false
     router.replace('/login')
+  }
+}
+
+const userDisplayName = computed(() => userStore.userInfo?.studentName || 'User')
+const userAvatarText = computed(() => {
+  const name = userDisplayName.value
+  return name ? name.charAt(0).toUpperCase() : 'U'
+})
+
+function handleAccountMenuClick({ key }: { key: string | number }) {
+  if (key === 'changePassword') {
+    changePasswordRef.value?.open()
+  }
+  if (key === 'logout') {
+    handleLogout(false)
+  }
+  if (key === 'logoutClear') {
+    handleLogout(true)
   }
 }
 
@@ -239,15 +292,35 @@ watch(
         </div>
 
         <div class="account-actions">
-          <span class="account-name">{{ userStore.displayName }}</span>
-          <a-button :loading="leaving" @click.stop="handleLogout(false)">
-            <template #icon><LogoutOutlined /></template>
-            退出
-          </a-button>
-          <a-button danger :loading="leaving" @click.stop="handleLogout(true)">
-            <template #icon><ClearOutlined /></template>
-            清空缓存并退出
-          </a-button>
+          <a-dropdown :trigger="['click']">
+            <div class="user-profile">
+              <a-avatar :size="34" class="user-avatar">
+                {{ userAvatarText }}
+              </a-avatar>
+              <span class="account-name">{{ userDisplayName }}</span>
+              <DownOutlined class="user-arrow" />
+            </div>
+            <template #overlay>
+              <a-menu @click="handleAccountMenuClick">
+                <a-menu-item key="changePassword">
+                  <KeyOutlined />
+                  <span>修改密码</span>
+                </a-menu-item>
+                <a-menu-divider />
+                <a-menu-item key="logout">
+                  <LogoutOutlined />
+                  <span>退出登录</span>
+                </a-menu-item>
+                <a-menu-divider />
+                <a-menu-item key="logoutClear" danger>
+                  <ClearOutlined />
+                  <span>清空缓存并退出</span>
+                </a-menu-item>
+              </a-menu>
+            </template>
+          </a-dropdown>
+
+          <ChangePasswordModal ref="changePasswordRef" />
         </div>
       </header>
 
@@ -262,7 +335,11 @@ watch(
           @contextmenu="showTabMenu($event, tab.path)"
         >
           <span>{{ tab.title }}</span>
-          <CloseOutlined class="tab-close" @click.stop="closeTab(tab.path)" />
+          <CloseOutlined
+            v-if="tab.path !== HOME_TAB.path"
+            class="tab-close"
+            @click.stop="closeTab(tab.path)"
+          />
         </button>
       </nav>
 
@@ -395,12 +472,52 @@ watch(
 .account-actions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  flex: 0 0 auto;
+}
+
+.user-profile {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 14px 5px 10px;
+  border: 1px solid #dce8e8;
+  border-radius: 8px;
+  cursor: pointer;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease;
+}
+
+.user-profile:hover {
+  border-color: #12a594;
+  background: #f6fcfb;
+  box-shadow: 0 2px 8px rgba(18, 165, 148, 0.12);
+}
+
+.user-avatar {
+  background: #12a594;
+  color: #ffffff;
+  font-weight: 600;
+  flex: 0 0 auto;
+  user-select: none;
 }
 
 .account-name {
-  color: #496765;
+  color: #274341;
   font-size: 14px;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.user-arrow {
+  color: #8ca09e;
+  font-size: 11px;
+  transition: transform 0.2s ease;
+}
+
+.user-profile:hover .user-arrow {
+  color: #12a594;
 }
 
 .tabs-bar {
