@@ -1,12 +1,33 @@
 import axios from 'axios'
 import { message, notification } from 'ant-design-vue'
 import AESHelper from './AESHelper'
+import router from '@/router'
 
 export const ACCESS_TOKEN = 'Access-Token'
+const TOKEN_TIMESTAMP_KEY = 'Token-Timestamp'
+export const TOKEN_EXPIRY_MS = 7 * 60 * 60 * 1000 // 7 小时
 
 export const getToken = () => localStorage.getItem(ACCESS_TOKEN)
-export const setToken = (token) => localStorage.setItem(ACCESS_TOKEN, token)
-export const clearToken = () => localStorage.removeItem(ACCESS_TOKEN)
+export const setToken = (token) => {
+  localStorage.setItem(ACCESS_TOKEN, token)
+  localStorage.setItem(TOKEN_TIMESTAMP_KEY, String(Date.now()))
+}
+export const clearToken = () => {
+  localStorage.removeItem(ACCESS_TOKEN)
+  localStorage.removeItem(TOKEN_TIMESTAMP_KEY)
+}
+
+export function isTokenExpired() {
+  const token = getToken()
+  if (!token) {
+    return true
+  }
+  const timestamp = localStorage.getItem(TOKEN_TIMESTAMP_KEY)
+  if (!timestamp) {
+    return true
+  }
+  return Date.now() - Number(timestamp) > TOKEN_EXPIRY_MS
+}
 
 const service = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || '/api',

@@ -1,6 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import type { RouteRecordRaw, RouteRecordSingleView } from 'vue-router'
-import { getToken } from '@/utils/request'
+import { getToken, isTokenExpired, clearToken } from '@/utils/request'
 
 const modules = import.meta.glob('@/views/**/*.vue')
 
@@ -13,6 +13,11 @@ const titleMap: Record<string, string> = {
   '/dataView': '数据概览',
   '/bigData': '大数据看板',
   '/test/test': '测试页面',
+  '/test/tableAntd': '测试表格(Antd)',
+  '/test/tableElement': '测试表格(Element)',
+  '/test/formAntd': '测试表单(Antd)',
+  '/test/formElement': '测试表单(Element)',
+  '/chat': '视频聊天',
   '/user/userInfo': '用户信息',
   '/user/userList': '用户列表',
 }
@@ -68,10 +73,22 @@ router.beforeEach((to) => {
   document.title = title ? `${title} - 重庆医事通科技有限公司` : '重庆医事通科技有限公司'
 
   if (to.path === '/login') {
-    return getToken() ? '/home' : true
+    const token = getToken()
+    if (token && !isTokenExpired()) {
+      return '/home'
+    }
+    if (token && isTokenExpired()) {
+      clearToken()
+      sessionStorage.clear()
+    }
+    return true
   }
 
-  if (!getToken()) {
+  if (!getToken() || isTokenExpired()) {
+    if (isTokenExpired()) {
+      clearToken()
+      sessionStorage.clear()
+    }
     return {
       path: '/login',
       query: {

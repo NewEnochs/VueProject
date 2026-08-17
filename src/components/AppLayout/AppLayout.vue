@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
+  AppstoreOutlined,
   BarChartOutlined,
   ClearOutlined,
   CloseOutlined,
@@ -10,15 +11,20 @@ import {
   ExperimentOutlined,
   FileSearchOutlined,
   FolderOpenOutlined,
+  FormOutlined,
   FundProjectionScreenOutlined,
   HomeOutlined,
   KeyOutlined,
+  LeftOutlined,
   LogoutOutlined,
   MenuOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
+  RightOutlined,
+  TableOutlined,
   TeamOutlined,
   ToolOutlined,
+  VideoCameraOutlined,
 } from '@ant-design/icons-vue'
 import { logout } from '@/api/user'
 import { useUserStore } from '@/stores/user'
@@ -40,6 +46,9 @@ const tabMenu = ref<TabContextMenu>({
   y: 0,
   path: '',
 })
+const tabsScrollRef = ref<HTMLElement>()
+const canScrollLeft = ref(false)
+const canScrollRight = ref(false)
 
 const menus: MenuGroup[] = [
   {
@@ -66,6 +75,18 @@ const menus: MenuGroup[] = [
       { path: '/dataView', title: '数据概览', icon: BarChartOutlined },
       { path: '/bigData', title: '大数据看板', icon: FundProjectionScreenOutlined },
       { path: '/test/test', title: '测试页面', icon: ExperimentOutlined },
+      { path: '/chat', title: '视频聊天', icon: VideoCameraOutlined },
+    ],
+  },
+  {
+    key: 'experience',
+    title: '体验模型',
+    icon: AppstoreOutlined,
+    children: [
+      { path: '/test/tableAntd', title: '测试表格(Antd)', icon: TableOutlined },
+      { path: '/test/tableElement', title: '测试表格(Element)', icon: TableOutlined },
+      { path: '/test/formAntd', title: '测试表单(Antd)', icon: FormOutlined },
+      { path: '/test/formElement', title: '测试表单(Element)', icon: FormOutlined },
     ],
   },
 ]
@@ -164,6 +185,45 @@ function closeRightTabs(path: string) {
   }
 }
 
+function closeOthersTabs(path: string) {
+  // 首页始终固定不可关闭，其余仅保留当前标签
+  if (path === HOME_TAB.path) {
+    hideTabMenu()
+    return
+  }
+
+  tabs.value = tabs.value.filter((item) => item.path === HOME_TAB.path || item.path === path)
+  if (!tabs.value.some((item) => item.path === route.path)) {
+    router.push(path)
+  }
+}
+
+function updateScrollButtons() {
+  const el = tabsScrollRef.value
+  if (!el) {
+    return
+  }
+  canScrollLeft.value = el.scrollLeft > 1
+  canScrollRight.value = el.scrollLeft < el.scrollWidth - el.clientWidth - 1
+}
+
+function scrollTabs(direction: 'left' | 'right') {
+  const el = tabsScrollRef.value
+  if (!el) {
+    return
+  }
+  el.scrollBy({ left: direction === 'left' ? -200 : 200, behavior: 'smooth' })
+}
+
+function onTabsWheel(event: WheelEvent) {
+  const el = tabsScrollRef.value
+  if (!el || el.scrollWidth <= el.clientWidth) {
+    return
+  }
+  event.preventDefault()
+  el.scrollLeft += event.deltaY || event.deltaX
+}
+
 function showTabMenu(event: MouseEvent, path: string) {
   // 首页标签不显示右键菜单（不可关闭）
   if (path === HOME_TAB.path) {
@@ -183,7 +243,7 @@ function hideTabMenu() {
   tabMenu.value.visible = false
 }
 
-function handleTabMenuAction(action: 'close' | 'left' | 'right') {
+function handleTabMenuAction(action: 'close' | 'left' | 'right' | 'others') {
   const path = tabMenu.value.path
   hideTabMenu()
 
@@ -195,6 +255,9 @@ function handleTabMenuAction(action: 'close' | 'left' | 'right') {
   }
   if (action === 'right') {
     closeRightTabs(path)
+  }
+  if (action === 'others') {
+    closeOthersTabs(path)
   }
 }
 
@@ -239,9 +302,12 @@ watch(
     if (parentKey && !openKeys.value.includes(parentKey)) {
       openKeys.value = [parentKey]
     }
+    nextTick(updateScrollButtons)
   },
   { immediate: true },
 )
+
+onMounted(updateScrollButtons)
 </script>
 
 <template>
@@ -324,24 +390,47 @@ watch(
         </div>
       </header>
 
-      <nav class="tabs-bar" aria-label="Open pages">
+      <div class="tabs-scroll-wrap" aria-label="Open pages">
         <button
-          v-for="tab in tabs"
-          :key="tab.path"
           type="button"
-          class="page-tab"
-          :class="{ active: tab.path === route.path }"
-          @click.stop="goPage(tab.path)"
-          @contextmenu="showTabMenu($event, tab.path)"
+          class="tab-scroll-btn"
+          :disabled="!canScrollLeft"
+          @click.stop="scrollTabs('left')"
         >
-          <span>{{ tab.title }}</span>
-          <CloseOutlined
-            v-if="tab.path !== HOME_TAB.path"
-            class="tab-close"
-            @click.stop="closeTab(tab.path)"
-          />
+          <LeftOutlined />
         </button>
-      </nav>
+        <div
+          ref="tabsScrollRef"
+          class="tabs-bar"
+          @wheel="onTabsWheel"
+          @scroll="updateScrollButtons"
+        >
+          <button
+            v-for="tab in tabs"
+            :key="tab.path"
+            type="button"
+            class="page-tab"
+            :class="{ active: tab.path === route.path }"
+            @click.stop="goPage(tab.path)"
+            @contextmenu="showTabMenu($event, tab.path)"
+          >
+            <span>{{ tab.title }}</span>
+            <CloseOutlined
+              v-if="tab.path !== HOME_TAB.path"
+              class="tab-close"
+              @click.stop="closeTab(tab.path)"
+            />
+          </button>
+        </div>
+        <button
+          type="button"
+          class="tab-scroll-btn"
+          :disabled="!canScrollRight"
+          @click.stop="scrollTabs('right')"
+        >
+          <RightOutlined />
+        </button>
+      </div>
 
       <div
         v-if="tabMenu.visible"
@@ -352,6 +441,10 @@ watch(
         <button type="button" @click="handleTabMenuAction('close')">
           <CloseOutlined />
           关闭本页
+        </button>
+        <button type="button" @click="handleTabMenuAction('others')">
+          <ClearOutlined />
+          关闭其他
         </button>
         <button type="button" @click="handleTabMenuAction('left')">关闭左侧</button>
         <button type="button" @click="handleTabMenuAction('right')">关闭右侧</button>
@@ -520,42 +613,134 @@ watch(
   color: #12a594;
 }
 
-.tabs-bar {
-  height: 42px;
+.tabs-scroll-wrap {
   display: flex;
-  align-items: end;
-  gap: 6px;
+  align-items: center;
+  gap: 4px;
   flex: 0 0 auto;
-  padding: 7px 14px 0;
-  overflow-x: auto;
-  overflow-y: hidden;
+  padding: 0 10px;
   border-bottom: 1px solid #dce8e8;
   background: #f8fbfb;
 }
 
+.tab-scroll-btn {
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border: 1px solid #d6e4e3;
+  border-radius: 6px;
+  color: #5d7a77;
+  background: #ffffff;
+  cursor: pointer;
+  transition:
+    color 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.tab-scroll-btn:hover:not(:disabled) {
+  color: #0b766e;
+  border-color: #12a594;
+  box-shadow: 0 2px 6px rgba(18, 165, 148, 0.15);
+}
+
+.tab-scroll-btn:disabled {
+  color: #c6d6d4;
+  border-color: #e6efee;
+  background: #f5f9f9;
+  cursor: default;
+}
+
+.tabs-bar {
+  min-width: 0;
+  flex: 1;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 8px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+}
+
+.tabs-bar::-webkit-scrollbar {
+  height: 4px;
+}
+
+.tabs-bar::-webkit-scrollbar-thumb {
+  border-radius: 2px;
+  background: #cfe0df;
+}
+
 .page-tab {
-  height: 35px;
+  height: 32px;
   display: flex;
   align-items: center;
   gap: 8px;
   flex: 0 0 auto;
   padding: 0 10px 0 14px;
-  border: 1px solid #dce8e8;
-  border-bottom: 0;
-  border-radius: 6px 6px 0 0;
+  border: 1px solid #d6e4e3;
+  border-radius: 7px;
   color: #526a69;
-  background: #edf4f3;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(20, 60, 55, 0.05);
   cursor: pointer;
+  font-size: 13px;
+  transition:
+    color 0.22s ease,
+    border-color 0.22s ease,
+    background-color 0.22s ease,
+    box-shadow 0.22s ease,
+    transform 0.22s ease;
+}
+
+.page-tab:hover {
+  color: #0b766e;
+  border-color: #12a594;
+  background: #f0fbf9;
+  box-shadow: 0 4px 10px rgba(18, 165, 148, 0.14);
+  transform: translateY(-1px);
 }
 
 .page-tab.active {
-  color: #0b766e;
-  background: #ffffff;
+  color: #ffffff;
+  border-color: #12a594;
+  background: linear-gradient(135deg, #14b8a4 0%, #0b8f83 100%);
+  box-shadow: 0 4px 12px rgba(18, 165, 148, 0.35);
 }
 
 .tab-close {
+  width: 16px;
+  height: 16px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
   color: #8ca09e;
-  font-size: 11px;
+  font-size: 10px;
+  transition:
+    color 0.2s ease,
+    background-color 0.2s ease;
+}
+
+.page-tab:hover .tab-close {
+  color: #0b766e;
+}
+
+.page-tab:hover .tab-close:hover {
+  color: #ffffff;
+  background: #12a594;
+}
+
+.page-tab.active .tab-close {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.page-tab.active .tab-close:hover {
+  color: #0b766e;
+  background: #ffffff;
 }
 
 .tab-context-menu {
